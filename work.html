@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Siddharth Shukla — The build behind the idea.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Manrope:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    /* ============================================================
+       RESET & BASE
+    ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--dark);
+      color: var(--text-warm);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { background: none; border: none; cursor: pointer; font: inherit; color: inherit; padding: 0; }
+    ul, ol { list-style: none; }
+    img { display: block; max-width: 100%; }
+
+    /* ============================================================
+       TOKENS
+    ============================================================ */
+    :root {
+      --dark:         #080808;
+      --cream:        #E8E2D5;
+      --text-warm:    #F5F0E8;
+      --text-dark:    #0A0A0A;
+      --accent:       #C4A882;
+      --border-dim:   rgba(245, 240, 232, 0.08);
+      --border-light: rgba(10, 10, 10, 0.12);
+
+      --font-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
+      --font-sans:  'Manrope', system-ui, -apple-system, sans-serif;
+      --font-mono:  'JetBrains Mono', 'Courier New', monospace;
+
+      --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-out:  cubic-bezier(0.25, 1, 0.5, 1);
+
+      --pad:       clamp(24px, 5vw, 80px);
+      --container: 1400px;
+    }
+
+    /* ============================================================
+       STONE TEXTURE
+    ============================================================ */
+    .textured { position: relative; }
+    .textured::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.06;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 256px 256px;
+    }
+    .textured > * { position: relative; z-index: 1; }
+
+    /* ============================================================
+       LAYOUT
+    ============================================================ */
+    .wrap {
+      max-width: var(--container);
+      margin-inline: auto;
+      padding-inline: var(--pad);
+    }
+
+    /* ============================================================
+       SCROLL REVEALS
+    ============================================================ */
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity 0.7s var(--ease-expo), transform 0.7s var(--ease-expo);
+    }
+    .reveal.in {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .reveal { opacity: 1; transform: none; transition: none; }
+    }
+
+    /* ============================================================
+       NAVIGATION
+    ============================================================ */
+    #nav {
+      position: fixed;
+      inset-block-start: 0;
+      inset-inline: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 28px var(--pad);
+      color: var(--text-warm);
+      transition: background 0.4s var(--ease-expo), padding 0.4s var(--ease-expo), border-color 0.4s;
+      border-bottom: 1px solid transparent;
+    }
+    #nav.solid {
+      background: rgba(8, 8, 8, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding-block: 16px;
+      border-bottom-color: var(--border-dim);
+    }
+
+    .nav-brand {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: clamp(18px, 1.8vw, 24px);
+      letter-spacing: -0.02em;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: opacity 0.2s;
+    }
+    .nav-brand:hover { opacity: 0.6; }
+
+    .nav-search-wrap {
+      flex: 1;
+      max-width: 280px;
+      margin-inline: auto;
+    }
+    #nav-search {
+      width: 100%;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid rgba(245, 240, 232, 0.18);
+      outline: none;
+      color: var(--text-warm);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      padding: 5px 0;
+      transition: border-color 0.2s;
+    }
+    #nav-search::placeholder { color: rgba(245, 240, 232, 0.28); }
+    #nav-search:focus { border-bottom-color: rgba(245, 240, 232, 0.5); }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+    }
+    .nav-links a {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: rgba(245, 240, 232, 0.65);
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text-warm); }
+
+    .nav-cta {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      padding: 10px 18px;
+      border: 1px solid rgba(245, 240, 232, 0.28);
+      color: var(--text-warm);
+      flex-shrink: 0;
+      transition: background 0.25s, border-color 0.25s, color 0.25s;
+      white-space: nowrap;
+    }
+    .nav-cta:hover {
+      background: var(--text-warm);
+      border-color: var(--text-warm);
+      color: var(--dark);
+    }
+
+    .nav-burger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      padding: 4px;
+      flex-shrink: 0;
+    }
+    .nav-burger span {
+      display: block;
+      width: 22px;
+      height: 1.5px;
+      background: var(--text-warm);
+      transition: transform 0.3s var(--ease-expo), opacity 0.25s;
+    }
+    .nav-burger.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+    .nav-burger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+    .nav-burger.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+
+    #mobile-nav {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      background: rgba(8, 8, 8, 0.98);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: var(--pad);
+      gap: 12px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s var(--ease-expo);
+    }
+    #mobile-nav.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .mobile-link {
+      font-family: var(--font-serif);
+      font-size: clamp(36px, 8vw, 64px);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-warm);
+      line-height: 1.1;
+      transition: opacity 0.2s;
+    }
+    .mobile-link:hover { opacity: 0.5; }
+    .mobile-cta {
+      margin-top: 32px;
+      align-self: flex-start;
+    }
+
+    @media (max-width: 768px) {
+      .nav-links, .nav-search-wrap { display: none; }
+      .nav-burger { display: flex; }
+    }
+
+    /* ============================================================
+       CONTACT MODAL
+    ============================================================ */
+    #modal {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(8, 8, 8, 0.97);
+      overflow-y: auto;
+      padding: 100px var(--pad) 60px;
+      display: flex;
+      align-items: flex-start;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s var(--ease-expo);
+    }
+    #modal.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .modal-close {
+      position: fixed;
+      top: 28px;
+      right: var(--pad);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: rgba(245, 240, 232, 0.4);
+      transition: color 0.2s;
+      z-index: 201;
+    }
+    .modal-close:hover { color: var(--text-warm); }
+
+    .modal-inner { max-width: 580px; width: 100%; }
+    .modal-heading {
+      font-family: var(--font-serif);
+      font-size: clamp(40px, 5vw, 76px);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 0.95;
+      color: var(--text-warm);
+      margin-bottom: 16px;
+    }
+    .modal-sub {
+      font-size: clamp(14px, 1.3vw, 16px);
+      font-weight: 300;
+      line-height: 1.7;
+      color: rgba(245, 240, 232, 0.45);
+      margin-bottom: 52px;
+    }
+
+    .field {
+      border-bottom: 1px solid var(--border-dim);
+      margin-bottom: 28px;
+      padding-bottom: 10px;
+      transition: border-color 0.2s;
+    }
+    .field:focus-within { border-bottom-color: var(--accent); }
+    .field-label {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.38em;
+      text-transform: uppercase;
+      color: rgba(245, 240, 232, 0.3);
+      margin-bottom: 8px;
+    }
+    .field input,
+    .field textarea {
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-family: var(--font-sans);
+      font-size: clamp(15px, 1.3vw, 17px);
+      font-weight: 300;
+      color: var(--text-warm);
+      line-height: 1.6;
+    }
+    .field input::placeholder,
+    .field textarea::placeholder { color: rgba(245, 240, 232, 0.18); }
+    .field textarea { resize: none; min-height: 88px; }
+
+    .form-submit {
+      display: block;
+      width: 100%;
+      margin-top: 28px;
+      padding: 16px 24px;
+      background: var(--accent);
+      color: #080808;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.38em;
+      text-transform: uppercase;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.25s;
+    }
+    .form-submit:hover { opacity: 0.78; }
+
+    #form-confirm {
+      display: none;
+      margin-top: 24px;
+      padding: 18px 22px;
+      background: rgba(196, 168, 130, 0.07);
+      border: 1px solid rgba(196, 168, 130, 0.3);
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: var(--accent);
+      line-height: 1.9;
+    }
+    #form-confirm.show { display: block; }
+
+    /* ============================================================
+       WORK HEADER
+    ============================================================ */
+    #work-header {
+      background: var(--dark);
+      color: var(--text-warm);
+      padding-block: clamp(140px, 16vw, 220px) clamp(48px, 6vw, 80px);
+    }
+    .wh-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.38em;
+      text-transform: uppercase;
+      color: rgba(245, 240, 232, 0.32);
+      margin-bottom: 20px;
+    }
+    .wh-heading {
+      font-family: var(--font-serif);
+      font-size: clamp(44px, 5.5vw, 88px);
+      font-weight: 900;
+      letter-spacing: -0.025em;
+      line-height: 0.9;
+      color: var(--text-warm);
+      margin-bottom: 28px;
+    }
+    .wh-body {
+      font-family: var(--font-sans);
+      font-size: clamp(15px, 1.4vw, 18px);
+      font-weight: 300;
+      line-height: 1.75;
+      color: rgba(245, 240, 232, 0.5);
+      max-width: 520px;
+    }
+
+    /* ============================================================
+       CASE STUDIES — HORIZONTAL SPLIT
+    ============================================================ */
+    #work {
+      background: var(--dark);
+      color: var(--text-warm);
+      padding-block: clamp(24px, 3vw, 40px) clamp(80px, 10vw, 140px);
+    }
+
+    .cs-row {
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: stretch;
+      border-top: 1px solid var(--border-dim);
+      padding-block: clamp(48px, 6vw, 80px);
+    }
+    .cs-row:last-child {
+      border-bottom: 1px solid var(--border-dim);
+    }
+    .cs-row.search-dim { opacity: 0.12; transition: opacity 0.25s; }
+
+    /* Decorative background number */
+    .cs-bg-num {
+      position: absolute;
+      right: -20px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: var(--font-serif);
+      font-size: clamp(160px, 18vw, 280px);
+      font-weight: 900;
+      line-height: 1;
+      color: var(--text-warm);
+      opacity: 0.025;
+      pointer-events: none;
+      user-select: none;
+      letter-spacing: -0.04em;
+      z-index: 0;
+    }
+
+    .cs-left {
+      position: relative;
+      z-index: 1;
+      width: 240px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--border-dim);
+      padding-right: clamp(32px, 4vw, 56px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .cs-num {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: rgba(245, 240, 232, 0.18);
+      transition: color 0.3s;
+    }
+    .cs-row:hover .cs-num {
+      color: var(--accent);
+    }
+    .cs-cat {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: rgba(245, 240, 232, 0.12);
+      margin-top: 8px;
+      display: block;
+    }
+
+    .cs-right {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      padding-left: clamp(32px, 4vw, 56px);
+    }
+    .cs-heading {
+      font-family: var(--font-serif);
+      font-size: clamp(28px, 3.2vw, 48px);
+      font-weight: 700;
+      font-style: normal;
+      letter-spacing: -0.02em;
+      line-height: 1.05;
+      color: var(--text-warm);
+      margin-bottom: 16px;
+    }
+    .cs-desc {
+      font-family: var(--font-sans);
+      font-size: clamp(13px, 1.2vw, 15px);
+      font-weight: 300;
+      line-height: 1.8;
+      color: rgba(245, 240, 232, 0.45);
+      max-width: 540px;
+      margin-bottom: 20px;
+    }
+    .cs-stack {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(245, 240, 232, 0.2);
+      margin-bottom: 24px;
+    }
+    .cs-link {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--accent);
+      border-bottom: 1px solid rgba(196, 168, 130, 0.3);
+      padding-bottom: 2px;
+      display: inline-block;
+      transition: opacity 0.2s;
+    }
+    .cs-link:hover { opacity: 0.6; }
+    .cs-no-link {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(245, 240, 232, 0.18);
+      display: inline-block;
+    }
+
+    @media (max-width: 768px) {
+      .cs-row { flex-direction: column; }
+      .cs-left {
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+        width: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border-dim);
+        padding-right: 0;
+        padding-bottom: 16px;
+        margin-bottom: 24px;
+      }
+      .cs-cat { margin-top: 0; }
+      .cs-right { padding-left: 0; }
+    }
+
+    /* ============================================================
+       LIVE DEMOS — DARK
+    ============================================================ */
+    #demos {
+      background: var(--dark);
+      color: var(--text-warm);
+      padding-block: clamp(80px, 10vw, 140px);
+      border-top: 1px solid var(--border-dim);
+    }
+
+    /* Section header */
+    .demos-header {
+      margin-bottom: clamp(64px, 8vw, 112px);
+      border-bottom: 1px solid var(--border-dim);
+      padding-bottom: clamp(48px, 6vw, 80px);
+    }
+    .demos-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.38em;
+      text-transform: uppercase;
+      color: rgba(245, 240, 232, 0.32);
+      margin-bottom: 16px;
+    }
+    .demos-heading {
+      font-family: var(--font-serif);
+      font-size: clamp(44px, 5.5vw, 88px);
+      font-weight: 900;
+      letter-spacing: -0.025em;
+      line-height: 0.9;
+      color: var(--text-warm);
+      margin-bottom: 24px;
+    }
+    .demos-intro {
+      font-family: var(--font-sans);
+      font-size: clamp(14px, 1.3vw, 16px);
+      font-weight: 300;
+      font-style: italic;
+      line-height: 1.8;
+      color: rgba(245, 240, 232, 0.45);
+      max-width: 520px;
+    }
+
+    /* Demo items */
+    .demo-item {
+      margin-bottom: clamp(48px, 6vw, 80px);
+    }
+    .demo-item.search-dim { opacity: 0.12; transition: opacity 0.25s; }
+
+    .demo-item-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 32px;
+      margin-bottom: clamp(28px, 3vw, 40px);
+      flex-wrap: wrap;
+    }
+    .demo-item-meta {
+      flex: 1;
+    }
+    .demo-num {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.38em;
+      text-transform: uppercase;
+      color: rgba(245, 240, 232, 0.28);
+      display: block;
+      margin-bottom: 14px;
+    }
+    .demo-item-heading {
+      font-family: var(--font-serif);
+      font-size: clamp(28px, 3.2vw, 44px);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.05;
+      color: var(--text-warm);
+      margin-bottom: 14px;
+    }
+    .demo-item-desc {
+      font-size: clamp(13px, 1.2vw, 15px);
+      font-weight: 300;
+      line-height: 1.8;
+      color: rgba(245, 240, 232, 0.45);
+      max-width: 480px;
+    }
+    .demo-tag {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: rgba(196, 168, 130, 0.5);
+      border: 1px solid rgba(196, 168, 130, 0.2);
+      padding: 8px 14px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      align-self: flex-start;
+    }
+    .demo-embed-zone {
+      width: 100%;
+      min-height: 280px;
+      background: rgba(245, 240, 232, 0.03);
+      border: 1px solid var(--border-dim);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .embed-placeholder {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.36em;
+      text-transform: uppercase;
+      color: rgba(245, 240, 232, 0.15);
+    }
+
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      min-height: 360px;
+      max-height: 480px;
+      background: rgba(245, 240, 232, 0.05);
+      border: 1px solid rgba(196, 168, 130, 0.25);
+      outline: 1px solid rgba(196, 168, 130, 0.06);
+      box-shadow: 0 0 0 4px rgba(196, 168, 130, 0.04);
+      overflow: hidden;
+    }
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(245,240,232,0.1) transparent;
+    }
+    .chat-messages::-webkit-scrollbar { width: 4px; }
+    .chat-messages::-webkit-scrollbar-track { background: transparent; }
+    .chat-messages::-webkit-scrollbar-thumb { background: rgba(245,240,232,0.1); }
+    .chat-msg {
+      max-width: 85%;
+      font-size: clamp(13px, 1.2vw, 15px);
+      font-weight: 300;
+      line-height: 1.7;
+    }
+    .chat-msg--bot {
+      align-self: flex-start;
+      color: rgba(245, 240, 232, 0.75);
+    }
+    .chat-msg--user {
+      align-self: flex-end;
+      color: var(--accent);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-align: right;
+    }
+    .chat-msg--typing {
+      align-self: flex-start;
+      color: rgba(245, 240, 232, 0.3);
+      font-style: italic;
+      font-size: 12px;
+    }
+    .chat-input-row {
+      display: flex;
+      align-items: center;
+      border-top: 1px solid rgba(196, 168, 130, 0.2);
+      background: rgba(196, 168, 130, 0.04);
+    }
+    .chat-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      padding: 16px 20px;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 300;
+      color: var(--text-warm);
+      caret-color: var(--accent);
+    }
+    .chat-input::placeholder { color: rgba(245, 240, 232, 0.2); }
+    .chat-send {
+      padding: 16px 24px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: rgba(196, 168, 130, 0.5);
+      border-left: 1px solid rgba(196, 168, 130, 0.2);
+      border-top: none;
+      border-right: none;
+      border-bottom: none;
+      transition: color 0.2s;
+      cursor: pointer;
+      background: none;
+    }
+    .chat-send:hover { color: var(--accent); }
+
+    /* Gradient divider between demos */
+    .demo-divider {
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(245, 240, 232, 0.1), transparent);
+      margin-block: clamp(48px, 6vw, 80px);
+    }
+
+    @media (max-width: 768px) {
+      .demo-item-header { flex-direction: column; gap: 16px; }
+      .demo-tag { align-self: flex-start; }
+      .demo-embed-zone { min-height: 200px; }
+    }
+
+    /* ============================================================
+       FOOTER
+    ============================================================ */
+    #footer {
+      background: var(--dark);
+      color: var(--text-warm);
+      border-top: 1px solid var(--border-dim);
+      padding-block: clamp(60px, 8vw, 112px) clamp(32px, 4vw, 48px);
+    }
+    .footer-top {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 60px;
+      align-items: end;
+      padding-bottom: clamp(40px, 5vw, 64px);
+      border-bottom: 1px solid var(--border-dim);
+      margin-bottom: clamp(24px, 3vw, 40px);
+    }
+    .footer-brand {
+      font-family: var(--font-serif);
+      font-size: clamp(26px, 3.5vw, 44px);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      color: var(--text-warm);
+      margin-bottom: 12px;
+    }
+    .footer-tagline {
+      font-size: clamp(13px, 1.2vw, 15px);
+      font-weight: 300;
+      color: rgba(245, 240, 232, 0.35);
+      line-height: 1.7;
+      max-width: 320px;
+    }
+    .footer-cols {
+      display: flex;
+      gap: 52px;
+      flex-shrink: 0;
+    }
+    .footer-col-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.38em;
+      text-transform: uppercase;
+      color: rgba(245, 240, 232, 0.22);
+      margin-bottom: 18px;
+    }
+    .footer-col-links {
+      display: flex;
+      flex-direction: column;
+      gap: 11px;
+    }
+    .footer-col-links a {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(245, 240, 232, 0.55);
+      transition: color 0.2s;
+    }
+    .footer-col-links a:hover { color: var(--text-warm); }
+
+    .footer-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .footer-copy {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: rgba(245, 240, 232, 0.18);
+    }
+
+    @media (max-width: 768px) {
+      .footer-top { grid-template-columns: 1fr; gap: 40px; }
+      .footer-cols { flex-wrap: wrap; gap: 36px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ============================================================
+       NAVIGATION
+  ============================================================ -->
+  <nav id="nav" class="textured">
+    <a href="index.html" class="nav-brand">S. Shukla</a>
+
+    <div class="nav-search-wrap">
+      <input type="search" id="nav-search" class="nav-search" placeholder="Search work" autocomplete="off" spellcheck="false">
+    </div>
+
+    <ul class="nav-links">
+      <li><a href="work.html">Work</a></li>
+      <li><a href="index.html#services">Services</a></li>
+      <li><a href="#demos">Demos</a></li>
+    </ul>
+
+    <button class="nav-cta" id="btn-open-modal">Start a project</button>
+
+    <button class="nav-burger" id="btn-burger" aria-label="Open menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </nav>
+
+  <!-- Mobile nav -->
+  <div id="mobile-nav" role="dialog" aria-modal="true" aria-label="Navigation">
+    <a href="work.html"           class="mobile-link" data-close-mobile>Work</a>
+    <a href="index.html#services" class="mobile-link" data-close-mobile>Services</a>
+    <a href="#demos"              class="mobile-link" data-close-mobile>Demos</a>
+    <button class="nav-cta mobile-cta" id="btn-open-modal-mobile">Start a project</button>
+  </div>
+
+
+  <!-- ============================================================
+       CONTACT MODAL
+  ============================================================ -->
+  <div id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <button class="modal-close" id="btn-close-modal">Close ×</button>
+    <div class="modal-inner">
+      <h2 class="modal-heading" id="modal-title">Start a<br>project.</h2>
+      <p class="modal-sub">Describe what you need. I will tell you what I can build.</p>
+
+      <form id="contact-form" novalidate>
+        <div class="field">
+          <label class="field-label" for="f-name">Name</label>
+          <input type="text" id="f-name" name="name" placeholder="Your name" required>
+        </div>
+        <div class="field">
+          <label class="field-label" for="f-email">Email</label>
+          <input type="email" id="f-email" name="email" placeholder="your@email.com" required>
+        </div>
+        <div class="field">
+          <label class="field-label" for="f-need">What you need</label>
+          <input type="text" id="f-need" name="need" placeholder="Website, automation, web app…" required>
+        </div>
+        <div class="field">
+          <label class="field-label" for="f-desc">Description</label>
+          <textarea id="f-desc" name="description" rows="4" placeholder="Tell me more about the problem or what needs to exist…"></textarea>
+        </div>
+        <button type="submit" class="form-submit">Submit request →</button>
+        <p id="form-confirm">Received. Expect a reply within 24 hours.</p>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- ============================================================
+       WORK HEADER
+  ============================================================ -->
+  <section id="work-header" class="textured">
+    <div class="wrap">
+      <p class="wh-eyebrow reveal">Selected work</p>
+      <h1 class="wh-heading reveal" style="transition-delay: 80ms">Things I have built.</h1>
+      <p class="wh-body reveal" style="transition-delay: 160ms">Four projects. Each one a working system — not a mockup, not a concept.</p>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       CASE STUDIES
+  ============================================================ -->
+  <section id="work" class="textured">
+    <div class="wrap">
+      <div class="cs-list">
+
+        <article class="cs-row reveal">
+          <span class="cs-bg-num" aria-hidden="true">01</span>
+          <div class="cs-left">
+            <span class="cs-num">01</span>
+            <span class="cs-cat">Web App</span>
+          </div>
+          <div class="cs-right">
+            <h2 class="cs-heading">Tournament Bracket App</h2>
+            <p class="cs-desc">A custom web application for managing sports tournament brackets. Dynamic standings, match progression, and persistent state — built entirely as a client-side application.</p>
+            <p class="cs-stack">HTML · CSS · JavaScript · Vercel</p>
+            <div class="cs-link-row">
+              <a href="https://tournament-app-lemon.vercel.app/" class="cs-link" target="_blank" rel="noopener noreferrer">View Project →</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="cs-row reveal" style="transition-delay: 60ms">
+          <span class="cs-bg-num" aria-hidden="true">02</span>
+          <div class="cs-left">
+            <span class="cs-num">02</span>
+            <span class="cs-cat">Automation + AI</span>
+          </div>
+          <div class="cs-right">
+            <h2 class="cs-heading">AI Lead Qualifier</h2>
+            <p class="cs-desc">An automated lead qualification system. A visitor fills a form, the submission is scored by AI, hot leads are flagged immediately, others are filed. Built on n8n with Claude API integration.</p>
+            <p class="cs-stack">n8n · Claude API · Vercel</p>
+            <div class="cs-link-row">
+              <a href="https://lead-qualifier-demo-sigma.vercel.app" class="cs-link" target="_blank" rel="noopener noreferrer">View Demo →</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="cs-row reveal" style="transition-delay: 120ms">
+          <span class="cs-bg-num" aria-hidden="true">03</span>
+          <div class="cs-left">
+            <span class="cs-num">03</span>
+            <span class="cs-cat">AI Pipeline</span>
+          </div>
+          <div class="cs-right">
+            <h2 class="cs-heading">FAQ Chatbot — RAG Pipeline</h2>
+            <p class="cs-desc">A Google Drive document becomes a queryable knowledge base. Drop a file into a folder — it is automatically chunked, embedded, indexed in Pinecone, and available for the chatbot to answer questions from instantly.</p>
+            <p class="cs-stack">n8n · Pinecone · OpenAI Embeddings · Google Drive</p>
+            <div class="cs-link-row">
+              <a href="#demos" class="cs-link">See Live Demo →</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="cs-row reveal" style="transition-delay: 180ms">
+          <span class="cs-bg-num" aria-hidden="true">04</span>
+          <div class="cs-left">
+            <span class="cs-num">04</span>
+            <span class="cs-cat">Automation</span>
+          </div>
+          <div class="cs-right">
+            <h2 class="cs-heading">Invoice Processing Automation</h2>
+            <p class="cs-desc">PDF invoices dropped into a Google Drive folder are read by AI, key data extracted regardless of format, filed to a Google Sheets database, and the billing team notified by email — automatically.</p>
+            <p class="cs-stack">n8n · Google Drive · Gemini · Google Sheets</p>
+            <div class="cs-link-row">
+              <span class="cs-no-link">Available on request</span>
+            </div>
+          </div>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       LIVE DEMOS
+  ============================================================ -->
+  <section id="demos" class="textured">
+    <div class="wrap">
+
+      <div class="demos-header">
+        <p class="demos-eyebrow reveal">Live Demos</p>
+        <h2 class="demos-heading reveal" style="transition-delay: 60ms">See it working.</h2>
+        <p class="demos-intro reveal" style="transition-delay: 120ms">These are not mockups. Two working systems built on the same stack used for clients. Interact with them directly.</p>
+      </div>
+
+      <div class="demo-item reveal">
+        <div class="demo-item-header">
+          <div class="demo-item-meta">
+            <span class="demo-num">DEMO // 01</span>
+            <h3 class="demo-item-heading">Ask the chatbot</h3>
+            <p class="demo-item-desc">Powered by a RAG pipeline connected to a real knowledge base. Ask it anything about services, pricing, or the work on this page.</p>
+          </div>
+          <span class="demo-tag">RAG · n8n · Pinecone</span>
+        </div>
+        <div id="chatbot-embed" class="chat-container">
+          <div class="chat-messages" id="chat-messages">
+            <div class="chat-msg chat-msg--bot">
+              <p>Hi. I can answer questions about services, pricing, timelines, and the projects on this page. What would you like to know?</p>
+            </div>
+          </div>
+          <div class="chat-input-row">
+            <input type="text" id="chat-input" class="chat-input" placeholder="Type a question…" autocomplete="off" spellcheck="false">
+            <button class="chat-send" id="chat-send" aria-label="Send message">→</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="demo-divider" aria-hidden="true"></div>
+
+      <div class="demo-item reveal">
+        <div class="demo-item-header">
+          <div class="demo-item-meta">
+            <span class="demo-num">DEMO // 02</span>
+            <h3 class="demo-item-heading">Submit an inquiry</h3>
+            <p class="demo-item-desc">This form connects to a live n8n automation. Your submission is scored by AI, routed, and filed automatically — no manual processing on my end.</p>
+          </div>
+          <span class="demo-tag">n8n · Claude API · Google Sheets</span>
+        </div>
+        <div id="lead-form-embed" class="demo-embed-zone">
+          <span class="embed-placeholder">Lead qualifier loads here</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       FOOTER
+  ============================================================ -->
+  <footer id="footer" class="textured">
+    <div class="wrap">
+      <div class="footer-top">
+        <div>
+          <p class="footer-brand">Siddharth Shukla</p>
+          <p class="footer-tagline">The build behind the idea.</p>
+        </div>
+        <nav class="footer-cols" aria-label="Footer navigation">
+          <div>
+            <p class="footer-col-label">Pages</p>
+            <ul class="footer-col-links">
+              <li><a href="work.html">Work</a></li>
+              <li><a href="index.html#services">Services</a></li>
+              <li><a href="#demos">Demos</a></li>
+              <li><a href="#" id="btn-footer-modal">Start a project</a></li>
+            </ul>
+          </div>
+          <div>
+            <p class="footer-col-label">Elsewhere</p>
+            <ul class="footer-col-links">
+              <li><a href="https://www.linkedin.com/in/siddharthshukla21/" target="_blank" rel="noopener noreferrer">LinkedIn</a></li>
+              <li><a href="https://twitter.com/sid_anushukla" target="_blank" rel="noopener noreferrer">Twitter</a></li>
+              <li><a href="https://substack.com/@siddharthshuklaofficial" target="_blank" rel="noopener noreferrer">Substack</a></li>
+              <li><a href="https://www.instagram.com/sid.subtext/" target="_blank" rel="noopener noreferrer">Instagram</a></li>
+            </ul>
+          </div>
+        </nav>
+      </div>
+      <div class="footer-bottom">
+        <p class="footer-copy">© 2026 Siddharth Shukla</p>
+      </div>
+    </div>
+  </footer>
+
+
+  <!-- ============================================================
+       JAVASCRIPT
+  ============================================================ -->
+  <script>
+    // --- NAV SOLID ON SCROLL ---
+    const nav = document.getElementById('nav');
+    window.addEventListener('scroll', () => {
+      nav.classList.toggle('solid', window.scrollY > 60);
+    }, { passive: true });
+
+    // --- HAMBURGER / MOBILE NAV ---
+    const burger    = document.getElementById('btn-burger');
+    const mobileNav = document.getElementById('mobile-nav');
+
+    function closeMobile() {
+      burger.classList.remove('open');
+      burger.setAttribute('aria-expanded', 'false');
+      mobileNav.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    burger.addEventListener('click', () => {
+      const isOpen = mobileNav.classList.toggle('open');
+      burger.classList.toggle('open', isOpen);
+      burger.setAttribute('aria-expanded', String(isOpen));
+      document.body.style.overflow = isOpen ? 'hidden' : '';
+    });
+    document.querySelectorAll('[data-close-mobile]').forEach(el => {
+      el.addEventListener('click', closeMobile);
+    });
+
+    // --- CONTACT MODAL ---
+    const modal = document.getElementById('modal');
+
+    function openModal() {
+      closeMobile();
+      modal.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeModal() {
+      modal.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    ['btn-open-modal', 'btn-open-modal-mobile', 'btn-footer-modal'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('click', e => { e.preventDefault(); openModal(); });
+    });
+    document.getElementById('btn-close-modal').addEventListener('click', closeModal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    // --- CONTACT FORM ---
+    const form    = document.getElementById('contact-form');
+    const confirm = document.getElementById('form-confirm');
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(form));
+      try {
+        const res = await fetch('https://formspree.io/f/xnjoarpk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        if (res.ok) {
+          form.style.opacity       = '0.3';
+          form.style.pointerEvents = 'none';
+          confirm.classList.add('show');
+        }
+      } catch (_) { /* fail silently */ }
+    });
+
+    // --- SCROLL REVEALS ---
+    const reveals = document.querySelectorAll('.reveal');
+    const revealObs = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add('in');
+        revealObs.unobserve(entry.target);
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -32px 0px' });
+    reveals.forEach(el => revealObs.observe(el));
+
+    // --- SEARCH (filters case studies and demos) ---
+    const searchInput = document.getElementById('nav-search');
+    const searchables = document.querySelectorAll('.cs-row, .demo-item');
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.toLowerCase().trim();
+      searchables.forEach(el => {
+        if (!q) { el.classList.remove('search-dim'); return; }
+        el.classList.toggle('search-dim', !el.textContent.toLowerCase().includes(q));
+      });
+    });
+    searchInput.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const first = Array.from(searchables).find(el => !el.classList.contains('search-dim'));
+      if (first) {
+        const top = first.getBoundingClientRect().top + window.scrollY - 96;
+        window.scrollTo({ top, behavior: 'smooth' });
+        searchInput.blur();
+      }
+    });
+
+    // --- CHATBOT ---
+    const chatWebhookUrl = 'https://sidshukla.app.n8n.cloud/webhook/daaa0676-e7b3-4a69-b1d1-9a390ae6d56b/chat';
+    const chatMessages   = document.getElementById('chat-messages');
+    const chatInput      = document.getElementById('chat-input');
+    const chatSend       = document.getElementById('chat-send');
+    let   chatSessionId  = 'session-' + Math.random().toString(36).slice(2);
+
+    function addMessage(text, role) {
+      const div = document.createElement('div');
+      div.className = 'chat-msg chat-msg--' + role;
+      const p = document.createElement('p');
+      p.textContent = text;
+      div.appendChild(p);
+      chatMessages.appendChild(div);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      return div;
+    }
+
+    async function sendChatMessage() {
+      const text = chatInput.value.trim();
+      if (!text) return;
+      chatInput.value = '';
+      chatSend.disabled = true;
+      addMessage(text, 'user');
+      const typing = addMessage('Thinking…', 'typing');
+      try {
+        const res = await fetch(chatWebhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chatInput: text, sessionId: chatSessionId })
+        });
+        const data = await res.json();
+        typing.remove();
+        const reply = data.output || data.text || data.message || 'No response received.';
+        addMessage(reply, 'bot');
+      } catch (err) {
+        typing.remove();
+        addMessage('Something went wrong. Please try again.', 'bot');
+      }
+      chatSend.disabled = false;
+      chatInput.focus();
+    }
+
+    chatSend.addEventListener('click', sendChatMessage);
+    chatInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendChatMessage();
+      }
+    });
+  </script>
+</body>
+</html>
