@@ -645,6 +645,49 @@
       color: rgba(245, 240, 232, 0.15);
     }
 
+    .lead-demo-card {
+      border: 1px solid rgba(196, 168, 130, 0.2);
+      background: rgba(245, 240, 232, 0.03);
+      padding: clamp(28px, 4vw, 48px);
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+    .lead-demo-what {
+      font-size: clamp(13px, 1.2vw, 15px);
+      font-weight: 300;
+      line-height: 1.8;
+      color: rgba(245, 240, 232, 0.55);
+      max-width: 520px;
+    }
+    .lead-demo-stack {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 20px;
+      margin-top: 8px;
+    }
+    .lead-demo-stack span {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: rgba(245, 240, 232, 0.2);
+    }
+    .lead-demo-btn {
+      display: inline-flex;
+      align-items: center;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--accent);
+      border-bottom: 1px solid rgba(196, 168, 130, 0.3);
+      padding-bottom: 3px;
+      transition: opacity 0.2s;
+      align-self: flex-start;
+    }
+    .lead-demo-btn:hover { opacity: 0.6; }
+
     .chat-container {
       display: flex;
       flex-direction: column;
@@ -860,7 +903,7 @@
        CONTACT MODAL
   ============================================================ -->
   <div id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-    <button class="modal-close" id="btn-close-modal">Close ×</button>
+    <button class="modal-close" id="btn-close-modal">×</button>
     <div class="modal-inner">
       <h2 class="modal-heading" id="modal-title">Start a<br>project.</h2>
       <p class="modal-sub">Describe what you need. I will tell you what I can build.</p>
@@ -1022,8 +1065,16 @@
           </div>
           <span class="demo-tag">n8n · Claude API · Google Sheets</span>
         </div>
-        <div id="lead-form-embed" class="demo-embed-zone">
-          <span class="embed-placeholder">Lead qualifier loads here</span>
+        <div class="lead-demo-card">
+          <div class="lead-demo-info">
+            <p class="lead-demo-what">Submit a project inquiry. The form is processed by an AI system — your submission is scored, categorised, and filed automatically. No manual handling on my end.</p>
+            <div class="lead-demo-stack">
+              <span>n8n</span><span>Claude API</span><span>Google Sheets</span><span>Vercel</span>
+            </div>
+          </div>
+          <a href="https://lead-qualifier-demo-sigma.vercel.app" target="_blank" rel="noopener noreferrer" class="lead-demo-btn">
+            Open Lead Qualifier →
+          </a>
         </div>
       </div>
 
